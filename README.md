@@ -2,32 +2,21 @@ Python Network Intrusion Detection System (NIDS)
 A real-time, Python-based Network Intrusion Detection System designed to monitor, analyze, and detect suspicious activity on a local network.
 
 Features
-Live packet sniffing with Scapy
-
-Signature-based alert engine (customizable YAML rules)
-
-Real-time Streamlit dashboard
-
-Top IP talkers and protocol breakdown
-
-Time-based traffic and alert charts
-
-Persistent alert logging (JSON & CSV)
-
-Web UI for start/stop control
+-Live packet sniffing with Scapy
+-Signature-based alert engine (customizable YAML rules)
+-Real-time Streamlit dashboard
+-Top IP talkers and protocol breakdown
+-Time-based traffic and alert charts
+-Persistent alert logging (JSON & CSV)
+-Web UI for start/stop control
 
 Tech Stack
-Python 3
-
-Scapy
-
-Streamlit
-
-Flask
-
-Pandas
-
-YAML
+-Python 3
+-Scapy
+-Streamlit
+-Flask
+-Pandas
+-YAML
 
 Project Structure
 NIDS/
@@ -55,11 +44,9 @@ Launch the dashboard:
 streamlit run app.py
 
 Usage
-Use the NIDS Control page to select your interface and start packet capture.
-
-Monitor real-time stats and alerts on the Home page.
-
-Download alerts as CSV for further analysis.
+-Use the NIDS Control page to select your interface and start packet capture.
+-Monitor real-time stats and alerts on the Home page.
+-Download alerts as CSV for further analysis.
 
 Notes
 Requires admin/root privileges to sniff packets.

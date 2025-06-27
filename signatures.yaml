@@ -1,0 +1,13 @@
+
+- id: 1001
+  name: "Potential Telnet Usage"
+  protocol: TCP
+  port: 23
+  description: "Telnet traffic detected (insecure)"
+
+- id: 1002
+  name: "Suspicious DNS Keyword"
+  protocol: UDP
+  port: 53
+  keyword: "malicious.com"
+  description: "Suspicious DNS query detected"

@@ -25,12 +25,23 @@ def start_nids(interface):
         if _nids_running:
             return {"status": "already_running", "interface": _current_interface}
         
+        # Validate interface string to prevent command injection
+        # Interface names should only contain alphanumeric chars, hyphens, underscores, 
+        # periods, colons, backslashes, curly braces (for Windows), and forward slashes
+        import re
+        if not re.match(r'^[a-zA-Z0-9\-_.:\\/{}\[\]]+$', interface):
+            return {"status": "error", "message": "Invalid interface name"}
+        
         # Start packet sniffer in a separate process to allow proper interruption
         # Get the directory where this script is located
         script_dir = os.path.dirname(os.path.abspath(__file__))
+        
+        # Use safer argument passing with proper escaping to avoid command injection
+        # Escape single quotes by replacing ' with '\''
+        escaped_interface = interface.replace("'", "'\\''")
+        import_cmd = f"from packet_sniffer import start_sniffing; start_sniffing('{escaped_interface}')"
         _nids_process = subprocess.Popen(
-            [sys.executable, "-c", 
-             f"from packet_sniffer import start_sniffing; start_sniffing('{interface}')"],
+            [sys.executable, "-c", import_cmd],
             cwd=script_dir
         )
         

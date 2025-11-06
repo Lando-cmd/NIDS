@@ -112,7 +112,9 @@ def test_structure():
 
 if __name__ == "__main__":
     try:
-        os.chdir("/home/runner/work/NIDS/NIDS")
+        # Change to the directory where this script is located
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        os.chdir(script_dir)
         test_structure()
         sys.exit(0)
     except AssertionError as e:

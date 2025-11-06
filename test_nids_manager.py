@@ -20,9 +20,24 @@ def test_nids_manager():
     assert status["status"] == "stopped", "Status should be 'stopped'"
     print("✓ Test 1 passed: Initial status is correct")
     
-    # Test 2: Start NIDS (using a mock interface for testing)
+    # Test 2: Start NIDS (using a platform-appropriate interface for testing)
     print("\n[Test 2] Testing start_nids function...")
-    test_interface = "lo"  # loopback interface for testing
+    # Try to get available interfaces, fallback to common ones if scapy not available
+    try:
+        from scapy.all import get_if_list
+        interfaces = get_if_list()
+        # Try to find loopback or any interface
+        test_interface = None
+        for iface in interfaces:
+            if 'lo' in iface.lower() or 'loopback' in iface.lower():
+                test_interface = iface
+                break
+        if not test_interface and interfaces:
+            test_interface = interfaces[0]
+    except:
+        # Fallback for systems where scapy isn't available
+        import platform
+        test_interface = "lo" if platform.system() != "Windows" else "Loopback"
     result = start_nids(test_interface)
     print(f"Start result: {result}")
     assert result["status"] in ["started", "already_running"], "Start should succeed"

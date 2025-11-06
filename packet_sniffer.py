@@ -1,110 +1,80 @@
-# packet_sniffer.py
-from scapy.all import sniff
-from scapy.layers.inet import IP
-from signature_engine import load_signatures, match_signature
-from collections import defaultdict
-from datetime import datetime
-import json
-import csv
-import os
-
-# File paths
-ALERT_LOG_PATH = "alert_log.json"
-ALERT_CSV_PATH = "alerts.csv"
-STATS_LOG_PATH = "packet_stats.json"
-
-# Load signatures
-signatures = load_signatures()
-
-# Global statistics
-stats = {
-    "total_packets": 0,
-    "alerts": 0,
-    "protocols": defaultdict(int),
-    "ip_stats": defaultdict(int),
-    "traffic_timeline": defaultdict(int),
-    "alert_timeline": defaultdict(int)
-}
+import scapy.all as scapy
+from collections import defaultdict, deque
+import threading
 
 
-# Log alert to JSON + CSV
-def log_alert(alert_data):
-    alert_data["timestamp"] = datetime.now().isoformat()
+class PacketSniffer:
+    """
+    A class to sniff network packets and keep statistics.
+    """
 
-    # Write to JSON
-    try:
-        with open(ALERT_LOG_PATH, "a") as f:
-            f.write(json.dumps(alert_data) + "\n")
-    except Exception as e:
-        print(f"Failed to write alert to JSON: {e}")
-
-    # Write to CSV
-    try:
-        file_exists = os.path.isfile(ALERT_CSV_PATH)
-        with open(ALERT_CSV_PATH, "a", newline="") as f:
-            writer = csv.DictWriter(f, fieldnames=["timestamp", "name", "description", "summary"])
-            if not file_exists:
-                writer.writeheader()
-            writer.writerow(alert_data)
-    except Exception as e:
-        print(f"Failed to write alert to CSV: {e}")
-
-
-# Save stats to JSON
-def save_stats():
-    try:
-        with open(STATS_LOG_PATH, "w") as f:
-            json.dump(stats, f)
-    except Exception as e:
-        print(f"Failed to write stats: {e}")
-
-
-# Process each packet
-def packet_callback(packet):
-    stats["total_packets"] += 1
-
-    # Protocol classification
-    if packet.haslayer("TCP"):
-        stats["protocols"]["TCP"] += 1
-    elif packet.haslayer("UDP"):
-        stats["protocols"]["UDP"] += 1
-    elif packet.haslayer("ICMP"):
-        stats["protocols"]["ICMP"] += 1
-    else:
-        stats["protocols"]["Other"] += 1
-
-    # Track IP talkers
-    if packet.haslayer(IP):
-        src = packet[IP].src
-        dst = packet[IP].dst
-        stats["ip_stats"][src] += 1
-        stats["ip_stats"][dst] += 1
-
-    # Time-based metrics
-    minute_key = datetime.now().strftime("%Y-%m-%d %H:%M")
-    stats["traffic_timeline"][minute_key] += 1
-
-    # Check for signature match
-    sig = match_signature(packet, signatures)
-    if sig:
-        stats["alerts"] += 1
-        stats["alert_timeline"][minute_key] += 1
-
-        alert = {
-            "name": sig["name"],
-            "description": sig["description"],
-            "summary": packet.summary()
+    def __init__(self, max_packets=1000):
+        self.packets = deque(maxlen=max_packets)
+        self.stop_sniffing_event = threading.Event()
+        self.thread = None
+        self.stats = {
+            "total_packets": 0,
+            "protocol_counts": defaultdict(int),
+            "ip_counts": defaultdict(int)
         }
-        print(f"[!] ALERT: {sig['name']} - {sig['description']}")
-        log_alert(alert)
-    else:
-        print(f"[+] Packet: {packet.summary()}")
+        self.lock = threading.Lock()
 
-    # Persist stats
-    save_stats()
+    def _packet_callback(self, packet):
+        """Callback function to process each sniffed packet."""
+        with self.lock:
+            self.packets.append(packet)
+            self.stats["total_packets"] += 1
 
+            if packet.haslayer(scapy.IP):
+                self.stats["ip_counts"][packet[scapy.IP].src] += 1
+                self.stats["ip_counts"][packet[scapy.IP].dst] += 1
 
-# Start sniffing on interface
-def start_sniffing(interface):
-    print(f"[*] Sniffing on {interface}...")
-    sniff(prn=packet_callback, iface=interface, store=0)
+            if packet.haslayer(scapy.TCP):
+                self.stats["protocol_counts"]["TCP"] += 1
+            elif packet.haslayer(scapy.UDP):
+                self.stats["protocol_counts"]["UDP"] += 1
+            elif packet.haslayer(scapy.ICMP):
+                self.stats["protocol_counts"]["ICMP"] += 1
+            else:
+                self.stats["protocol_counts"]["Other"] += 1
+
+    def get_packet(self):
+        """Get a packet from the queue."""
+        with self.lock:
+            if self.packets:
+                return self.packets.popleft()
+        return None
+
+    def get_stats(self):
+        """Return the current statistics."""
+        with self.lock:
+            # Return a copy to prevent modification outside the class
+            return {
+                "total_packets": self.stats["total_packets"],
+                "protocol_counts": self.stats["protocol_counts"].copy(),
+                "ip_counts": self.stats["ip_counts"].copy()
+            }
+
+    def start(self):
+        """Start the packet sniffer in a new thread."""
+        self.stop_sniffing_event.clear()
+        self.thread = threading.Thread(target=self._run, daemon=True)
+        self.thread.start()
+        print(f"Sniffer thread started. Listening...")
+
+    def _run(self):
+        """Run the sniffer."""
+        try:
+            # The 'iface' argument can be specified if needed, e.g., iface="Wi-Fi"
+            # Leaving it blank lets scapy choose the default interface.
+            scapy.sniff(prn=self._packet_callback, store=False, stop_filter=lambda p: self.stop_sniffing_event.is_set())
+            print("Sniffing stopped.")
+        except Exception as e:
+            print(f"Error during sniffing: {e}")
+
+    def stop(self):
+        """Stop the packet sniffer."""
+        self.stop_sniffing_event.set()
+        if self.thread and self.thread.is_alive():
+            self.thread.join()
+        print("Sniffer thread stopped.")

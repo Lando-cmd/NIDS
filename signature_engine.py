@@ -34,8 +34,8 @@ def match_signature(packet, signatures):
                     payload = packet[Raw].load.decode(errors="ignore")
                     if keyword not in payload:
                         continue
-                except Exception:
-                    # If decoding fails, skip this packet
+                except (UnicodeDecodeError, AttributeError, TypeError):
+                    # If decoding fails or payload is malformed, skip this packet
                     continue
             else:
                 # No payload to match, skip

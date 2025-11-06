@@ -1,5 +1,6 @@
 # signature_engine.py
 import yaml
+from scapy.all import Raw
 
 def load_signatures(path="signatures.yaml"):
     with open(path, "r") as file:
@@ -25,10 +26,19 @@ def match_signature(packet, signatures):
         if port and hasattr(l4, "dport") and l4.dport != port:
             continue
 
-        # Match keyword (if payload exists)
+        # Match keyword (if payload exists) - optimized to only decode payload
         if keyword:
-            raw = bytes(packet).decode(errors="ignore")
-            if keyword not in raw:
+            if packet.haslayer(Raw):
+                try:
+                    # Only decode the Raw payload layer instead of entire packet
+                    payload = packet[Raw].load.decode(errors="ignore")
+                    if keyword not in payload:
+                        continue
+                except (UnicodeDecodeError, AttributeError, TypeError):
+                    # If decoding fails or payload is malformed, skip this packet
+                    continue
+            else:
+                # No payload to match, skip
                 continue
 
         return sig  # Match found

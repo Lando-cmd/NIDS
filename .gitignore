@@ -25,6 +25,9 @@ venv/
 env/
 ENV/
 
+# Testing
+test_performance.py
+
 # IDE
 .vscode/
 .idea/
@@ -41,3 +44,7 @@ stats.csv
 # OS
 .DS_Store
 Thumbs.db
+
+# Temporary files
+*.tmp
+*.log

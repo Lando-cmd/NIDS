@@ -7,6 +7,7 @@ from datetime import datetime
 import json
 import csv
 import os
+import time
 
 # File paths
 ALERT_LOG_PATH = "alert_log.json"
@@ -25,6 +26,10 @@ stats = {
     "traffic_timeline": defaultdict(int),
     "alert_timeline": defaultdict(int)
 }
+
+# Track last save time for batched writes
+last_save_time = time.time()
+SAVE_INTERVAL = 10  # Save stats every 10 seconds instead of every packet
 
 
 # Log alert to JSON + CSV
@@ -53,8 +58,17 @@ def log_alert(alert_data):
 # Save stats to JSON
 def save_stats():
     try:
+        # Convert defaultdicts to regular dicts for JSON serialization
+        stats_to_save = {
+            "total_packets": stats["total_packets"],
+            "alerts": stats["alerts"],
+            "protocols": dict(stats["protocols"]),
+            "ip_stats": dict(stats["ip_stats"]),
+            "traffic_timeline": dict(stats["traffic_timeline"]),
+            "alert_timeline": dict(stats["alert_timeline"])
+        }
         with open(STATS_LOG_PATH, "w") as f:
-            json.dump(stats, f)
+            json.dump(stats_to_save, f)
     except Exception as e:
         print(f"Failed to write stats: {e}")
 
@@ -100,8 +114,12 @@ def packet_callback(packet):
     else:
         print(f"[+] Packet: {packet.summary()}")
 
-    # Persist stats
-    save_stats()
+    # Persist stats periodically instead of every packet (performance improvement)
+    global last_save_time
+    current_time = time.time()
+    if current_time - last_save_time >= SAVE_INTERVAL:
+        save_stats()
+        last_save_time = current_time
 
 
 # Start sniffing on interface

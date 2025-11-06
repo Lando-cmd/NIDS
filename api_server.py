@@ -1,44 +1,49 @@
-# api_server.py
-from flask import Flask, jsonify, request
-from threading import Thread
-import json
-import os
-from main import start_nids, stop_nids, get_nids_status
+from fastapi import FastAPI, HTTPException
+from nids_manager import NIDSManager
+import uvicorn
 
-app = Flask(__name__)
+class APIServer:
+    """
+    A simple FastAPI server to expose NIDS functionality.
+    """
+    def __init__(self, nids_manager: NIDSManager):
+        self.app = FastAPI()
+        self.nids_manager = nids_manager
+        self._setup_routes()
 
-@app.route("/")
-def home():
-    return jsonify({"message": "NIDS API is live!"})
+    def _setup_routes(self):
+        """Sets up the API routes."""
+        @self.app.post("/start")
+        def start_nids():
+            try:
+                self.nids_manager.start()
+                return {"message": "NIDS started"}
+            except Exception as e:
+                # Log the exception for debugging
+                print(f"Error starting NIDS: {e}")
+                raise HTTPException(status_code=500, detail=str(e))
 
-@app.route("/start", methods=["POST"])
-def start():
-    interface = request.json.get("interface")
-    if not interface:
-        return jsonify({"error": "Missing interface"}), 400
+        @self.app.post("/stop")
+        def stop_nids():
+            try:
+                self.nids_manager.stop()
+                return {"message": "NIDS stopped"}
+            except Exception as e:
+                print(f"Error stopping NIDS: {e}")
+                raise HTTPException(status_code=500, detail=str(e))
 
-    if get_nids_status() == "running":
-        return jsonify({"status": "already running"})
+        @self.app.get("/stats")
+        def get_stats():
+            return self.nids_manager.get_stats()
 
-    Thread(target=start_nids, args=(interface,), daemon=True).start()
-    return jsonify({"status": "started", "interface": interface})
+        @self.app.get("/alerts")
+        def get_alerts():
+            return self.nids_manager.get_alerts()
 
-@app.route("/stop", methods=["POST"])
-def stop():
-    stop_nids()
-    return jsonify({"status": "stopped"})
+        @self.app.get("/status")
+        def get_status():
+            return {"is_running": self.nids_manager.is_running}
 
-@app.route("/status", methods=["GET"])
-def status():
-    return jsonify({"status": get_nids_status()})
-
-@app.route("/stats", methods=["GET"])
-def stats():
-    if not os.path.exists("packet_stats.json"):
-        return jsonify({})
-    with open("packet_stats.json", "r") as f:
-        data = json.load(f)
-    return jsonify(data)
-
-if __name__ == "__main__":
-    app.run(port=5000)
+    def run(self, host="127.0.0.1", port=8000):
+        """Runs the FastAPI server."""
+        uvicorn.run(self.app, host=host, port=port)

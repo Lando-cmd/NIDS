@@ -1,4 +1,8 @@
 # api_server.py
+# NOTE: This Flask API is kept for backward compatibility but is no longer required.
+# The NIDS can now be fully controlled via the Streamlit dashboard (streamlit run app.py).
+# To use this legacy API, run: python api_server.py
+
 from flask import Flask, jsonify, request
 from threading import Thread
 import json

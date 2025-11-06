@@ -9,27 +9,25 @@ This Python-based real-time Network Intrusion Detection System monitors and anal
 - Top IP talkers and protocol traffic breakdown
 - Time-based charts for traffic and alerts
 - Persistent alert logs saved in JSON and CSV formats
-- Web UI to control start/stop of packet capture via Flask API
+- Integrated control panel to start/stop packet capture directly from the dashboard
 
 ## Tech Stack
 - Python 3
 - Scapy
 - Streamlit
-- Flask
 - Pandas
 - YAML
 
 ## Project Structure
 NIDS/
 ├── app.py               # Streamlit dashboard entry point
-├── api_server.py        # Flask API for control
-├── main.py              # Optional main runner
+├── nids_manager.py      # NIDS control module
 ├── packet_sniffer.py    # Packet capture logic
 ├── signature_engine.py  # Alert detection engine
 ├── packet_stats.json    # Real-time stats file
 ├── alerts.csv           # Exported alert logs
 ├── alert_log.json       # Alert history logs
-├── rules.yaml           # Detection rules file
+├── signatures.yaml      # Detection rules file
 ├── pages/
 │   ├── 1_Home.py        # Live dashboard page
 │   ├── 2_NIDS_Control.py # Control panel page
@@ -38,15 +36,14 @@ NIDS/
 Install dependencies:
 pip install -r requirements.txt
 
-Start the Flask control server:
-python api_server.py
-
-Launch the Streamlit dashboard:
+Launch the application:
 streamlit run app.py
 
 ## Usage
-- Select network interface and start packet capture via the NIDS Control page
+- Navigate to the NIDS Control page from the sidebar
+- Select your network interface and click "Start NIDS" to begin packet capture
 - Monitor live network traffic and alerts on the Home dashboard
+- Use the Control page to stop/start the packet sniffer as needed
 - Export alerts to CSV for further analysis
 
 ## Notes

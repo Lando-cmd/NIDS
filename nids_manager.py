@@ -7,6 +7,8 @@ import threading
 import subprocess
 import sys
 import os
+import json
+import re
 from packet_sniffer import start_sniffing
 
 # Global state
@@ -27,22 +29,24 @@ def start_nids(interface):
         
         # Validate interface string to prevent command injection
         # Interface names should only contain alphanumeric chars, hyphens, underscores, 
-        # periods, colons, backslashes, curly braces (for Windows), and forward slashes
-        import re
-        if not re.match(r'^[a-zA-Z0-9\-_.:\\/{}\[\]]+$', interface):
+        # periods, colons, and brackets (for common interface naming patterns)
+        if not re.match(r'^[a-zA-Z0-9\-_.:\/\[\]]+$', interface):
             return {"status": "error", "message": "Invalid interface name"}
         
         # Start packet sniffer in a separate process to allow proper interruption
         # Get the directory where this script is located
         script_dir = os.path.dirname(os.path.abspath(__file__))
         
-        # Use safer argument passing with proper escaping to avoid command injection
-        # Escape single quotes by replacing ' with '\''
-        escaped_interface = interface.replace("'", "'\\''")
-        import_cmd = f"from packet_sniffer import start_sniffing; start_sniffing('{escaped_interface}')"
+        # Use safer argument passing: pass interface as a JSON-encoded environment variable
+        # This avoids any risk of command injection through string construction
+        env = os.environ.copy()
+        env['NIDS_INTERFACE'] = json.dumps(interface)
+        
+        import_cmd = "import json, os; from packet_sniffer import start_sniffing; start_sniffing(json.loads(os.environ['NIDS_INTERFACE']))"
         _nids_process = subprocess.Popen(
             [sys.executable, "-c", import_cmd],
-            cwd=script_dir
+            cwd=script_dir,
+            env=env
         )
         
         _nids_running = True

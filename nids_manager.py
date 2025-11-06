@@ -6,6 +6,7 @@ Manages the packet sniffer thread lifecycle for the Streamlit dashboard.
 import threading
 import subprocess
 import sys
+import os
 from packet_sniffer import start_sniffing
 
 # Global state
@@ -25,10 +26,12 @@ def start_nids(interface):
             return {"status": "already_running", "interface": _current_interface}
         
         # Start packet sniffer in a separate process to allow proper interruption
+        # Get the directory where this script is located
+        script_dir = os.path.dirname(os.path.abspath(__file__))
         _nids_process = subprocess.Popen(
             [sys.executable, "-c", 
              f"from packet_sniffer import start_sniffing; start_sniffing('{interface}')"],
-            cwd="/home/runner/work/NIDS/NIDS"
+            cwd=script_dir
         )
         
         _nids_running = True

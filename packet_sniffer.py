@@ -125,4 +125,9 @@ def packet_callback(packet):
 # Start sniffing on interface
 def start_sniffing(interface):
     print(f"[*] Sniffing on {interface}...")
-    sniff(prn=packet_callback, iface=interface, store=0)
+    try:
+        sniff(prn=packet_callback, iface=interface, store=0)
+    finally:
+        # Ensure final stats are saved on shutdown
+        save_stats()
+        print("[*] Final stats saved.")
